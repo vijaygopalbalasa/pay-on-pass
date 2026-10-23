@@ -45,10 +45,11 @@ The app picks its network from `VITE_NETWORK` (`ARC-TESTNET` by default, `ARC-MA
 
 ## What changed after Arc Studio
 
-Arc Studio wrote the contract, the tests and the app, and deployed the contract to Arc testnet. Running the full flow with three real wallets, first on testnet and then on mainnet, found two bugs in the app, fixed here. The contract logic did not change.
+Arc Studio wrote the contract, the tests and the app, and deployed the contract to Arc testnet. Running the full flow with three real wallets, first on testnet and then on mainnet, found three bugs in the app, fixed here. The contract logic did not change.
 
 - The task list read the contract's task struct as an array, so every field came back empty. It now reads the named fields. (Found on testnet.)
 - "Task created" and "Transaction confirmed" appeared as soon as the wallet returned a transaction hash, before the transaction was mined, so the list and the balances did not refresh. The app now waits for the receipt, then refreshes the list and every balance. (Found in the first mainnet run.)
+- The task list read every TaskCreated event from the deploy block onward. Arc's RPC refuses log ranges over 10,000 blocks, so the list went empty a few hours after deploy. It now reads `taskCount` and then each task directly. (Found on the live site.)
 
 Also added by hand: Arc mainnet next to testnet with a `VITE_NETWORK` switch, the mainnet address and the block the task list starts reading from, and network labels that follow the active network. Arc Studio deploys to testnet only, so the mainnet contract was deployed separately with the same compiled code and verified on Sourcify.
 

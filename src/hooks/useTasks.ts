@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { createPublicClient, http, parseAbiItem } from 'viem'
+import { createPublicClient, http } from 'viem'
 import { arc, arcTestnet } from 'viem/chains'
 import { ESCROW_CONTRACT, ESCROW_CONFIG } from '@/escrow-config'
 
@@ -20,25 +20,21 @@ const client = createPublicClient({
   transport: http(ESCROW_CONFIG.rpcUrl),
 })
 
-const TaskCreatedAbi = parseAbiItem(
-  'event TaskCreated(uint256 indexed taskId, address indexed buyer, address indexed worker, address checker, uint256 amount, uint64 deadline, bytes32 criteriaHash)'
-)
-
 export function useTasks() {
   const [tasks, setTasks] = useState<TaskData[]>([])
   const [loading, setLoading] = useState(false)
 
   const refresh = useCallback((): Promise<void> => {
     setLoading(true)
-    return client.getLogs({
+    // Read the count and then each task. A log query from the deploy block stops working once the chain is more
+    // than 10,000 blocks past it (the RPC refuses the range), which on Arc is a few hours.
+    return client.readContract({
       address: ESCROW_CONTRACT.address,
-      event: TaskCreatedAbi,
-      fromBlock: ESCROW_CONFIG.fromBlock,
-      toBlock: 'latest',
-    }).then((logs) =>
+      abi: ESCROW_CONTRACT.abi,
+      functionName: 'taskCount',
+    }).then((count) =>
       Promise.all(
-        logs.map(async (log) => {
-          const id = log.args.taskId!
+        Array.from({ length: Number(count as bigint) }, (_, i) => BigInt(i)).map(async (id) => {
           const raw = await client.readContract({
             address: ESCROW_CONTRACT.address,
             abi: ESCROW_CONTRACT.abi,

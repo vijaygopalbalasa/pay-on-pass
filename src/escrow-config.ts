@@ -13,7 +13,6 @@ export interface EscrowNetworkConfig {
   usdcAddress: `0x${string}`
   explorerBase: string     // no trailing slash
   rpcUrl: string
-  fromBlock: bigint        // deploy block, where the task list starts reading events
 }
 
 const ARC_USDC = '0x3600000000000000000000000000000000000000' as const
@@ -27,7 +26,6 @@ export const ESCROW_NETWORKS: Record<string, EscrowNetworkConfig> = {
     usdcAddress: ARC_USDC,
     explorerBase: 'https://testnet.arcscan.app',
     rpcUrl: 'https://rpc.testnet.arc.io',
-    fromBlock: 68700664n,
   },
   /** Arc Mainnet (chain 5042) */
   'ARC-MAINNET': {
@@ -37,7 +35,6 @@ export const ESCROW_NETWORKS: Record<string, EscrowNetworkConfig> = {
     usdcAddress: ARC_USDC,
     explorerBase: 'https://explorer.arc.io',
     rpcUrl: 'https://rpc.mainnet.arc.io',
-    fromBlock: 27467489n,
   },
 }
 
