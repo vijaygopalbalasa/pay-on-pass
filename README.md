@@ -5,6 +5,7 @@ USDC escrow for one piece of work. A buyer locks USDC for a task, a worker submi
 Built in [Arc Studio](https://studio.arc.io) and live on Arc mainnet.
 
 - Live app: https://pay-on-pass-arc.vercel.app
+- Walkthrough video (the build in Arc Studio and the mainnet run): https://pay-on-pass-arc.vercel.app/walkthrough.mp4
 - Arc Studio project: https://studio.arc.io/app/cd8a547a-4525-4f3f-af73-b655ac9f414c
 - Contract on Arc mainnet: [`0x1d587d48fa5e8bf338d4b00830d24760c029fb88`](https://explorer.arc.io/address/0x1d587d48fa5e8bf338d4b00830d24760c029fb88), source verified on [Sourcify](https://repo.sourcify.dev/5042/0x1d587d48fa5e8bf338d4b00830d24760c029fb88) (exact match), deployed in [`0xadf7490f…`](https://explorer.arc.io/tx/0xadf7490f06741ffa9701dc60294e43e02dbb96030d30388bd11f0d7898087576)
 - Contract on Arc testnet: [`0x183532f5286b7e82e1f9f18f8be3d9a49c51fe97`](https://testnet.arcscan.app/address/0x183532f5286b7e82e1f9f18f8be3d9a49c51fe97)
