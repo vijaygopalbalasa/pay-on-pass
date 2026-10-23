@@ -20,6 +20,8 @@ Task 0, 0.10 USDC, run through the app on October 23, 2026:
 | Worker submits the deliverable | [`0x522feded…`](https://explorer.arc.io/tx/0x522feded386946b0c88308c3b6f087be546a8f8b3b3b42fdb8e718f1572f2b9c) |
 | Checker approves; the worker receives 0.10 USDC | [`0xe3ca9d91…`](https://explorer.arc.io/tx/0xe3ca9d91d711c36571b941e7bf03242a5ab314c5ab098124309abcdd8b2ca824) |
 
+The walkthrough video shows task 1, the same flow run again after the fix to when the app reports success (below): [funded](https://explorer.arc.io/tx/0x0d6480b0ac1e812e088e01fa8d9ffe1986f96191083f564c97c54b62dffe708e), [submitted](https://explorer.arc.io/tx/0x8cc3c2031ce15d7da21539c5d881932a286b25cfab700348e1b2a8dc0b66d9d9), [approved and paid](https://explorer.arc.io/tx/0xfad3dd9f552ae381930703dde3dae9e219e79853726a0f1bd7459c5d981d31a0).
+
 ## How it works
 
 - `createTask(worker, checker, amount, deadline, criteriaHash)` pulls the USDC into escrow. The caller is the buyer.
@@ -43,9 +45,10 @@ The app picks its network from `VITE_NETWORK` (`ARC-TESTNET` by default, `ARC-MA
 
 ## What changed after Arc Studio
 
-Arc Studio wrote the contract, the tests and the app, and deployed the contract to Arc testnet. A full testnet run with three real wallets then found one bug, fixed here:
+Arc Studio wrote the contract, the tests and the app, and deployed the contract to Arc testnet. Running the full flow with three real wallets, first on testnet and then on mainnet, found two bugs in the app, fixed here. The contract logic did not change.
 
-- The task list read the contract's task struct as an array, so every field came back empty. It now reads the named fields.
+- The task list read the contract's task struct as an array, so every field came back empty. It now reads the named fields. (Found on testnet.)
+- "Task created" and "Transaction confirmed" appeared as soon as the wallet returned a transaction hash, before the transaction was mined, so the list and the balances did not refresh. The app now waits for the receipt, then refreshes the list and every balance. (Found in the first mainnet run.)
 
 Also added by hand: Arc mainnet next to testnet with a `VITE_NETWORK` switch, the mainnet address and the block the task list starts reading from, and network labels that follow the active network. Arc Studio deploys to testnet only, so the mainnet contract was deployed separately with the same compiled code and verified on Sourcify.
 

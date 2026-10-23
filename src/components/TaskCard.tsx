@@ -8,6 +8,8 @@ import {
   formatDeadline, isExpired,
 } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
+import { confirmed } from '@/lib/confirm'
 
 const glass = {
   card: {
@@ -86,8 +88,9 @@ export function TaskCard({ task, onAction }: Props) {
   const [deliverable, setDeliverable] = useState('')
   const [verdictNote, setVerdictNote]  = useState('')
 
-  const { writeContract, data: txHash, isPending } = useWriteContract()
+  const { writeContractAsync, data: txHash, isPending } = useWriteContract()
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash })
+  const queryClient = useQueryClient()
 
   const onWrongChain = !!chainId && chainId !== ESCROW_CONFIG.chainId
   const doSwitch = () => switchChain({ chainId: ESCROW_CONFIG.chainId })
@@ -99,34 +102,39 @@ export function TaskCard({ task, onAction }: Props) {
   const status  = task.status  // 0=Funded 1=Submitted 2=Paid 3=Refunded
   const isOpen  = status === 0 || status === 1
 
-  function send(fn: string, args: unknown[]) {
-    writeContract({
-      address: ESCROW_CONTRACT.address,
-      abi: ESCROW_CONTRACT.abi,
-      functionName: fn,
-      args,
-      chainId: ESCROW_CONFIG.chainId,
-    }, {
-      onSuccess() { toast.success('Transaction confirmed'); onAction() },
-      onError(e)  { toast.error(e.message?.split('\n')[0] ?? 'Transaction failed') },
-    })
+  // "Confirmed" only once the transaction is mined; then the list and every balance refresh
+  async function send(fn: string, args: unknown[]) {
+    try {
+      const hash = await writeContractAsync({
+        address: ESCROW_CONTRACT.address,
+        abi: ESCROW_CONTRACT.abi,
+        functionName: fn,
+        args,
+        chainId: ESCROW_CONFIG.chainId,
+      })
+      await confirmed(hash, queryClient)
+      toast.success('Transaction confirmed')
+      onAction()
+    } catch (e) {
+      toast.error((e as Error).message?.split('\n')[0] ?? 'Transaction failed')
+    }
   }
 
   function handleSubmit() {
     if (!deliverable.trim()) return
-    send('submit', [task.taskId, hashText(deliverable)])
+    void send('submit', [task.taskId, hashText(deliverable)])
   }
 
   function handleApprove() {
-    send('approve', [task.taskId, verdictNote.trim() ? hashText(verdictNote) : hashText('approved')])
+    void send('approve', [task.taskId, verdictNote.trim() ? hashText(verdictNote) : hashText('approved')])
   }
 
   function handleReject() {
-    send('reject', [task.taskId, verdictNote.trim() ? hashText(verdictNote) : hashText('rejected')])
+    void send('reject', [task.taskId, verdictNote.trim() ? hashText(verdictNote) : hashText('rejected')])
   }
 
   function handleRefund() {
-    send('refundAfterDeadline', [task.taskId])
+    void send('refundAfterDeadline', [task.taskId])
   }
 
   const actionDisabled = !address || isPending || isConfirming
@@ -275,8 +283,9 @@ export function TaskCard({ task, onAction }: Props) {
 function ClaimableRow({ address, onAction }: { address: string; onAction: () => void }) {
   const [shown, setShown] = useState(false)
   const [altAddr, setAltAddr] = useState('')
-  const { writeContract, data: txHash, isPending } = useWriteContract()
+  const { writeContractAsync, data: txHash, isPending } = useWriteContract()
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash })
+  const queryClient = useQueryClient()
 
   if (!shown) {
     return (
@@ -288,18 +297,22 @@ function ClaimableRow({ address, onAction }: { address: string; onAction: () => 
     )
   }
 
-  function withdraw() {
+  async function withdraw() {
     const hasAlt = altAddr.trim().length > 0
-    writeContract({
-      address: ESCROW_CONTRACT.address,
-      abi: ESCROW_CONTRACT.abi,
-      functionName: hasAlt ? 'withdrawTo' : 'withdraw',
-      args: hasAlt ? [altAddr.trim() as `0x${string}`] : [],
-      chainId: ESCROW_CONFIG.chainId,
-    }, {
-      onSuccess() { toast.success('Withdrawn!'); onAction() },
-      onError(e)  { toast.error(e.message?.split('\n')[0] ?? 'Withdraw failed') },
-    })
+    try {
+      const hash = await writeContractAsync({
+        address: ESCROW_CONTRACT.address,
+        abi: ESCROW_CONTRACT.abi,
+        functionName: hasAlt ? 'withdrawTo' : 'withdraw',
+        args: hasAlt ? [altAddr.trim() as `0x${string}`] : [],
+        chainId: ESCROW_CONFIG.chainId,
+      })
+      await confirmed(hash, queryClient)
+      toast.success('Withdrawn!')
+      onAction()
+    } catch (e) {
+      toast.error((e as Error).message?.split('\n')[0] ?? 'Withdraw failed')
+    }
   }
 
   // suppress TS "address unused", it's captured in closure via props
@@ -317,7 +330,7 @@ function ClaimableRow({ address, onAction }: { address: string; onAction: () => 
       />
       <button
         disabled={isPending || isConfirming}
-        onClick={withdraw}
+        onClick={() => { void withdraw() }}
         className="w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed"
         style={{ background: 'var(--accent)' }}
       >

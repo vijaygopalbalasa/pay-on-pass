@@ -29,6 +29,10 @@ Pay on Pass: USDC task escrow on Arc. A buyer funds a task with USDC, a worker s
 
 Constructor arg: USDC token `0x3600000000000000000000000000000000000000`
 
+## Arc mainnet
+
+Live at `0x1d587d48fa5e8bf338d4b00830d24760c029fb88` (chain 5042), source verified on Sourcify (exact match). Build the app for it with `VITE_NETWORK=ARC-MAINNET bun run build`. README.md lists the mainnet transactions and the fixes made after the Arc Studio build.
+
 ## Key Files
 
 - `src/App.tsx` - Main application logic (thin composition root)

@@ -5,6 +5,8 @@ import { Loader2, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
 import { ESCROW_CONTRACT, ESCROW_CONFIG, buildTxUrl } from '@/escrow-config'
 import { hashText, parseUsdc } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
+import { confirmed } from '@/lib/confirm'
 
 const glass = {
   card: { background: 'var(--surface-strong)', backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)', border: '1px solid var(--border)', borderRadius: '1.25rem' },
@@ -29,7 +31,8 @@ export function NewTaskForm({ onCreated }: Props) {
   const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash })
 
   // Step 2: createTask
-  const { writeContract: writeCreate, data: createTxHash, isPending: isCreatePending } = useWriteContract()
+  const { writeContractAsync: writeCreate, data: createTxHash, isPending: isCreatePending } = useWriteContract()
+  const queryClient = useQueryClient()
   const { isLoading: isCreateConfirming, isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createTxHash })
 
   const onWrongChain = !!chainId && chainId !== ESCROW_CONFIG.chainId
@@ -63,22 +66,25 @@ export function NewTaskForm({ onCreated }: Props) {
     })
   }
 
-  function handleCreate() {
+  // Success is announced once the transaction is mined, not when the wallet hands back a hash
+  async function handleCreate() {
     if (!address || !criteriaHash) return
-    writeCreate({
-      address: ESCROW_CONTRACT.address,
-      abi: ESCROW_CONTRACT.abi,
-      functionName: 'createTask',
-      args: [worker as `0x${string}`, checker as `0x${string}`, rawAmount, deadlineTs, criteriaHash],
-      chainId: ESCROW_CONFIG.chainId,
-    }, {
-      onSuccess() {
-        toast.success('Task created!')
-        setWorker(''); setChecker(''); setAmount(''); setDeadline(''); setCriteria('')
-        setOpen(false)
-        onCreated()
-      },
-    })
+    try {
+      const hash = await writeCreate({
+        address: ESCROW_CONTRACT.address,
+        abi: ESCROW_CONTRACT.abi,
+        functionName: 'createTask',
+        args: [worker as `0x${string}`, checker as `0x${string}`, rawAmount, deadlineTs, criteriaHash],
+        chainId: ESCROW_CONFIG.chainId,
+      })
+      await confirmed(hash, queryClient)
+      toast.success('Task created!')
+      setWorker(''); setChecker(''); setAmount(''); setDeadline(''); setCriteria('')
+      setOpen(false)
+      onCreated()
+    } catch (e) {
+      toast.error((e as Error).message?.split('\n')[0] ?? 'Transaction failed')
+    }
   }
 
   if (isCreateSuccess) { /* toast already fired */ }
@@ -192,7 +198,7 @@ export function NewTaskForm({ onCreated }: Props) {
               {isApproveSuccess && (
                 <button
                   disabled={!validInputs || isCreatePending || isCreateConfirming}
-                  onClick={handleCreate}
+                  onClick={() => { void handleCreate() }}
                   className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ background: 'var(--success)' }}
                 >
